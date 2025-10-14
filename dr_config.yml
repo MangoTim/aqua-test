@@ -1,7 +1,7 @@
 environment: disaster-recovery
 images:
   - name: my-welcome-python-app
-    registry: systexacr.azurecr.io
+    registry: acr
     tag: v3
     containerRuntime: docker
     locationType: local
