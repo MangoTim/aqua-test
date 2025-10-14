@@ -1,0 +1,20 @@
+environment: production
+images:
+  - name: my-welcome-python-app
+    registry: systexacr.azurecr.io
+    tag: v3
+    runtime: docker
+    scan_required: true
+    aqua_policy: strict
+  - name: backend-service
+    registry: systexacr.azurecr.io
+    tag: v1.2.0
+    runtime: docker
+    scan_required: true
+    aqua_policy: moderate
+  - name: frontend-ui
+    registry: systexacr.azurecr.io
+    tag: latest
+    runtime: docker
+    scan_required: false
+    aqua_policy: none
