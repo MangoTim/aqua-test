@@ -1,7 +1,8 @@
 environment: production
 images:
   - name: my-welcome-python-app
-    registry: systexacr.azurecr.io
+    registry: acr
+    imagePath: systexacr.azurecr.io/my-welcome-python-app
     tag: v3
     containerRuntime: docker
     locationType: local
