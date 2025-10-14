@@ -3,18 +3,13 @@ images:
   - name: my-welcome-python-app
     registry: systexacr.azurecr.io
     tag: v3-dr
-    runtime: docker
-    scan_required: true
-    aqua_policy: strict
-  - name: backend-service
-    registry: systexacr.azurecr.io
-    tag: v1.2.0-dr
-    runtime: docker
-    scan_required: true
-    aqua_policy: moderate
-  - name: frontend-ui
-    registry: systexacr.azurecr.io
-    tag: stable
-    runtime: docker
-    scan_required: false
-    aqua_policy: none
+    containerRuntime: docker
+    locationType: local
+    scan:
+      enabled: true
+      hideBase: false
+      onDisallowed: ignore
+      showNegligible: false
+      customFlags: ""
+      notCompliesCmd: ""
+      register: true
