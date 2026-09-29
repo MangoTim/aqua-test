@@ -13,9 +13,23 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Install Flask and Werkzeug
 RUN pip install Flask Werkzeug
 
+# Install libcap2-bin so we can grant Python the ability to bind port 80 as non-root
+RUN apt-get update && apt-get install -y --no-install-recommends libcap2-bin \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create a non-root user to run the app
+RUN groupadd -r appuser \
+    && useradd -r -g appuser -d /app -s /usr/sbin/nologin appuser \
+    && chown -R appuser:appuser /app
+
+# Grant appuser the ability to bind to privileged port 80
+RUN setcap 'cap_net_bind_service=+ep' $(readlink -f $(which python))
+
 # Make port 80 available to the world outside this container
 EXPOSE 80
 
+# Switch to non-root user
+USER appuser
+
 # Run app.py when the container launches
 CMD ["python", "app.py"]
-
