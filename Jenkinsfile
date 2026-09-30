@@ -2,23 +2,15 @@
 //
 // ============================================================================
 // One-time setup required BEFORE the first build (Manage Jenkins → ...):
-//   1. In-process Script Approval
-//        http://192.168.147.105:8081/scriptApproval
-//      Approve signatures required by the script {} block at the end of the
-//      "Aqua Security Scan" stage:
-//          staticMethod  java.lang.Class  forName  java.lang.String
-//          staticMethod  java.lang.Class  forName  java.lang.String  boolean  boolean  java.lang.ClassLoader
-//          method        org.jenkinsci.plugins.aquadockerscannerbuildstep.AquaScannerAction ... <ctor>(hudson.model.Run, java.lang.String, java.lang.String, java.lang.String)
-//          method        hudson.model.Run  addAction  hudson.model.Action
-//      (The forName + addAction pair WILL fail on first run with a sandbox
-//       rejection — that's expected. Approve them, then re-run.)
-//   2. Credential "aqua-console"
+//   1. Credential "aqua-console"
 //        Manage Jenkins → Credentials → (global) → Add Credentials
 //      Kind: Username with password   |   ID: aqua-console   |   Username: administrator
 //      (stores the Aqua Console admin password for the scanner CLI --user/--password flags.)
-//   3. Plugins (already installed in this Jenkins)
-//        - Aqua Scanner plugin 3.2.10   (provides org.jenkinsci.plugins.aquadockerscannerbuildstep.AquaScannerAction)
-//        - HTML Publisher plugin        NOT needed — sidebar uses the Aqua plugin's own Action class
+//   2. Plugins — none required. The scanner CLI is invoked directly via
+//        `podman run registry.aquasec.com/scanner:2022.4.868`, so we do not
+//        depend on the broken Aqua Jenkins plugin v3.2.10. (Optional: install
+//        HTML Publisher if you want a sidebar "Aqua Report" link; the HTML
+//        report is always available under "Build Artifacts".)
 // ============================================================================
 //
 // Watches: https://github.com/MangoTim/aqua-test (branch: test-v1)
@@ -31,11 +23,9 @@
 //              manually with `--local <image>` instead, which is the syntax
 //              Aqua scanner 2022.4 accepts.
 //
-// For the sidebar report: we still load the Aqua plugin's AquaScannerAction class
-// (which is just a Jenkins Action that iframes the archived HTML) and instantiate
-// it manually via a script block. This gives the same "Aqua Scan - <image>"
-// sidebar link the plugin would have provided, without invoking the broken
-// scanner step. This is why prerequisite #1 (script approval) above is mandatory.
+// The HTML report is archived as a build artifact (visible under "Build
+// Artifacts" on the build page) — that is the canonical way to view scan
+// results. No script approval is required.
 
 pipeline {
     agent any
@@ -125,22 +115,6 @@ pipeline {
                 always {
                     archiveArtifacts artifacts: 'aqua-report.html',
                                      allowEmptyArchive: true
-                    // Manually instantiate the Aqua plugin's sidebar Action
-                    // class so the build gets the same "Aqua Scan - <image>"
-                    // sidebar link the plugin would have added, without
-                    // running its broken scanner step. The Action iframes
-                    // the archived HTML report.
-                    script {
-                        def ctor = Class.forName(
-                            'org.jenkinsci.plugins.aquadockerscannerbuildstep.AquaScannerAction'
-                        ).getConstructor(hudson.model.Run, String, String, String)
-                        currentBuild.addAction(
-                            ctor.newInstance(currentBuild,
-                                             "${env.BUILD_NUMBER}",
-                                             "aqua-report.html",
-                                             "${FULL_IMAGE}")
-                        )
-                    }
                 }
             }
         }
