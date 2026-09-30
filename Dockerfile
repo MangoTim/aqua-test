@@ -25,8 +25,8 @@ RUN groupadd -r appuser \
 # Grant appuser the ability to bind to privileged port 80
 RUN setcap 'cap_net_bind_service=+ep' $(readlink -f $(which python))
 
-# Make port 80 available to the world outside this container
-EXPOSE 80
+# Make port 8083 available to the world outside this container
+EXPOSE 8083
 
 # Switch to non-root user
 USER appuser

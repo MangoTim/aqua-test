@@ -130,7 +130,7 @@ pipeline {
                         --network host \
                         ${FULL_IMAGE}
                     sleep 3
-                    curl -fsS http://192.168.147.105/ | grep -q "Welcome" \
+                    curl -fsS http://192.168.147.105:8083/ | grep -q "Welcome" \
                         || { echo "BLOCKED: welcome page missing 'Welcome' marker"; \
                              podman logs aqua-demo-verify-${BUILD_NUMBER} || true; \
                              exit 1; }
