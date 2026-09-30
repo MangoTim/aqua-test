@@ -109,7 +109,7 @@ pipeline {
                                 --no-verify \
                                 --user ${AQUA_USER} \
                                 --password ${AQUA_PASSWORD} \
-                                --htmlfile aqua-report.html
+                                --html > aqua-report.html
 
                         echo "--- Aqua scan summary ---"
                         # Print the compliance marker so it shows in the console
