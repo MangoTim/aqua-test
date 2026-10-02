@@ -127,7 +127,6 @@ pipeline {
                        Build: <a href=\"${BUILD_URL}\">#${BUILD_NUMBER}</a></p>
                 """,
                 mimeType: 'text/html',
-                attachmentsPattern: 'aqua-report.html',
                 to: 'tim.wong@systex.com.hk'
             )
         }
