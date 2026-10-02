@@ -83,17 +83,6 @@ pipeline {
                 always {
                     archiveArtifacts artifacts: 'aqua-report.html',
                                      allowEmptyArchive: true
-                    script {
-                        def ctor = Class.forName(
-                            'org.jenkinsci.plugins.aquadockerscannerbuildstep.AquaScannerAction'
-                        ).getConstructor(hudson.model.Run, String, String, String)
-                        currentBuild.addAction(
-                            ctor.newInstance(currentBuild,
-                                             "${env.BUILD_NUMBER}",
-                                             "aqua-report.html",
-                                             "${FULL_IMAGE}")
-                        )
-                    }
                 }
             }
         }
