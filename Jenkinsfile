@@ -1,32 +1,3 @@
-// Jenkinsfile — Aqua Security pipeline demo
-//
-// ============================================================================
-// One-time setup required BEFORE the first build (Manage Jenkins → ...):
-//   1. Credential "aqua-console"
-//        Manage Jenkins → Credentials → (global) → Add Credentials
-//      Kind: Username with password   |   ID: aqua-console   |   Username: administrator
-//      (stores the Aqua Console admin password for the scanner CLI --user/--password flags.)
-//   2. Plugins — none required. The scanner CLI is invoked directly via
-//        `podman run registry.aquasec.com/scanner:2022.4.868`, so we do not
-//        depend on the broken Aqua Jenkins plugin v3.2.10. (Optional: install
-//        HTML Publisher if you want a sidebar "Aqua Report" link; the HTML
-//        report is always available under "Build Artifacts".)
-// ============================================================================
-//
-// Watches: https://github.com/MangoTim/aqua-test (branch: test-v1)
-// Builds with: podman (talks to host podman via /var/run/docker.sock mount)
-// Pushes to:   http://192.168.147.105:8082 (local registry on .105)
-// Scans with:  Manual sidecar invocation of registry.aquasec.com/scanner:2022.4.868.
-//              The Aqua Jenkins plugin v3.2.10 is unusable for actual scanning —
-//              it generates `scan --registry "" <positional>` which the scanner
-//              CLI rejects with "accepts 1 arg(s), received 2". We run the scanner
-//              manually with `--local <image>` instead, which is the syntax
-//              Aqua scanner 2022.4 accepts.
-//
-// The HTML report is archived as a build artifact (visible under "Build
-// Artifacts" on the build page) — that is the canonical way to view scan
-// results. No script approval is required.
-
 pipeline {
     agent any
 
@@ -37,9 +8,6 @@ pipeline {
         FULL_IMAGE    = "${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
         AQUA_HOST     = 'https://192.168.147.105'
         SCANNER_IMAGE = 'registry.aquasec.com/scanner:2022.4.868'
-        // Credential ID in Jenkins: Manage Jenkins → Credentials.
-        // Must be a "Username with password" kind storing the Aqua Console
-        // admin (currently 'administrator').
         AQUA_CREDS_ID = 'aqua-console'
     }
 
@@ -115,14 +83,22 @@ pipeline {
                 always {
                     archiveArtifacts artifacts: 'aqua-report.html',
                                      allowEmptyArchive: true
+                    script {
+                        def ctor = Class.forName(
+                            'org.jenkinsci.plugins.aquadockerscannerbuildstep.AquaScannerAction'
+                        ).getConstructor(hudson.model.Run, String, String, String)
+                        currentBuild.addAction(
+                            ctor.newInstance(currentBuild,
+                                             "${env.BUILD_NUMBER}",
+                                             "aqua-report.html",
+                                             "${FULL_IMAGE}")
+                        )
+                    }
                 }
             }
         }
 
         stage('Deploy & Verify Webpage') {
-            // CI/CD proof: spin up the scanned image, hit its HTTP endpoint,
-            // and fail the build if the welcome page is missing. Cleans the
-            // container up afterwards so the host stays tidy.
             steps {
                 sh '''
                     set -eux
@@ -151,9 +127,35 @@ pipeline {
         }
         success {
             echo "Pipeline SUCCESS — image ${FULL_IMAGE} passed Aqua scan (HTML report archived)"
+            emailext (
+                subject: "✅ Build #${BUILD_NUMBER} PASSED — ${FULL_IMAGE}",
+                body: """<h2>Aqua Security CI/CD — Build #${BUILD_NUMBER} PASSED</h2>
+                    <p>Image: <code>${FULL_IMAGE}</code></p>
+                    <p>Aqua scan result: <b>Image Is Compliant</b></p>
+                    <p>Deploy verify: Welcome page OK on <code>192.168.147.105:8083/</code></p>
+                    <p>Report: <a href=\"${BUILD_URL}artifact/aqua-report.html\">aqua-report.html</a><br>
+                       Console: <a href=\"${BUILD_URL}console\">build console</a><br>
+                       Build: <a href=\"${BUILD_URL}\">#${BUILD_NUMBER}</a></p>
+                """,
+                mimeType: 'text/html',
+                attachmentsPattern: 'aqua-report.html',
+                to: 'tim.wong@systex.com.hk'
+            )
         }
         failure {
             echo "Pipeline FAILED — see Aqua scan results above for the vulnerabilities that triggered the failure"
+            emailext (
+                subject: "❌ Build #${BUILD_NUMBER} FAILED",
+                body: """<h2>Aqua Security CI/CD — Build #${BUILD_NUMBER} FAILED</h2>
+                    <p>Image: <code>${FULL_IMAGE}</code></p>
+                    <p>Check the console for the failure stage.</p>
+                    <p>Console: <a href=\"${BUILD_URL}console\">build console</a><br>
+                       Build: <a href=\"${BUILD_URL}\">#${BUILD_NUMBER}</a></p>
+                """,
+                mimeType: 'text/html',
+                attachLog: true,
+                to: 'tim.wong@systex.com.hk'
+            )
         }
     }
 }
